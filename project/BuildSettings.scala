@@ -21,7 +21,7 @@ import sbtdynver.DynVerPlugin.autoImport._
 object BuildSettings {
 
   lazy val buildSettings = Seq[Setting[_]](
-    name := "sbt-snowplow",
+    name := "sbt-snowplow-release",
     organization := "com.snowplowanalytics",
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.html")),
   )
@@ -31,7 +31,7 @@ object BuildSettings {
     publishArtifact := true,
     Test / publishArtifact := false,
     pomIncludeRepository := { _ => false },
-    homepage := Some(url("http://snowplowanalytics.com")),
+    homepage := Some(url("http://snowplow.io")),
     ThisBuild / dynverVTagPrefix := false, // Otherwise git tags required to have v-prefix
     developers := List(
       Developer(

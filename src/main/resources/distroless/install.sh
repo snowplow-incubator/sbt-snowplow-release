@@ -1,9 +1,13 @@
 set -e
 
+# PATH must include the executables needed for this script, i.e. `rm`, `cp`, and `ln`
+# These are borrowed from the debian:bullseye mounted image
 export PATH=/bullseye/usr/bin:/bullseye/bin:/bullseye/sbin
 
 ARCH=$(uname -m)
 
+# LD_LIBRARY_PATH must lead to system libs that get dynamically linked by the executables used in this script
+# These are borrowed from the debian:bullseye mounted image
 export LD_LIBRARY_PATH=/bullseye/lib/$ARCH-linux-gnu:/bullseye/usr/lib/$ARCH-linux-gnu/:/bullseye/lib64
 
 case $ARCH in

@@ -20,12 +20,9 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 11
-    - name: Run tests
-      run: sbt +test
     - name: Check Scala formatting
-      if: ${{ always() }}
       run: sbt scalafmtCheckAll
-    - name: Deploy to sbt-snowplow to Maven Central
+    - name: Deploy sbt-snowplow-release to Maven Central
       if: startsWith(github.ref, 'refs/tags/')
       run: sbt ci-release
       env:

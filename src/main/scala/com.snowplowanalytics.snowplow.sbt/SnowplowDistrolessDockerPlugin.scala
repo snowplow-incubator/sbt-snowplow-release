@@ -67,7 +67,11 @@ object SnowplowDistrolessDockerPlugin extends AutoPlugin {
       }
     },
     dockerAlias := dockerAlias.value.copy(tag = dockerAlias.value.tag.map(t => s"$t-distroless")),
-    dockerUpdateLatest := false
+    dockerUpdateLatest := false,
+    dockerBuildCommand := dockerBuildCommand.value.flatMap {
+      case "build" => Seq("buildx", "build")
+      case other => Seq(other)
+    }
   ) ++ inConfig(Docker)(
     Seq(
       daemonUserUid := None,

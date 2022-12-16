@@ -29,6 +29,7 @@ rm -rf /usr/bin
 # Install system libraries required for java
 cp /java/lib/${ARCH}-linux-gnu/libz.so* /java/lib/${ARCH}-linux-gnu/libgcc_s.so* /lib/${ARCH}-linux-gnu/
 cp /java/usr/lib/${ARCH}-linux-gnu/libstdc++.so* /usr/lib/${ARCH}-linux-gnu/
+cp -r /java/usr/lib/locale /usr/lib/
 
 # Install java
 cp -r /java/etc/java-11-openjdk /etc/

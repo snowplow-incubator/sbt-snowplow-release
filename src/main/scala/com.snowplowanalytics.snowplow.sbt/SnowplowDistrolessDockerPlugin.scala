@@ -59,7 +59,8 @@ object SnowplowDistrolessDockerPlugin extends AutoPlugin {
           "RUN --mount=type=bind,from=bullseye,source=/,target=/bullseye --mount=type=bind,from=java,source=/,target=/java",
           "/bullseye/bin/sh",
           "/bullseye/usr/bin/install.sh"
-        )
+        ),
+        Cmd("ENV", "LANG=C.UTF-8")
       ) ++ dockerCommands.value.tail.map {
         case Cmd("USER", _*) => Cmd("USER", "nobody")
         case Cmd("WORKDIR", _*) => Cmd("WORKDIR", "/tmp")

@@ -1,3 +1,8 @@
+0.2.0 (2022-12-21)
+------------------
+Distroless image should use UTF-8 as default charset (#3)
+Enable docker buildkit for distroless images (#2)
+
 0.1.0 (2022-11-16)
 ------------------
 Initial commit

@@ -1,7 +1,11 @@
+0.3.0 (2023-03-21)
+------------------
+Plugin to add Iglu schemas to managed resources (#6)
+
 0.2.1 (2023-01-10)
 ------------------
-Update copyright notice to 2023 (close #5)
-Fix docker buildx command (close #4)
+Update copyright notice to 2023 (#5)
+Fix docker buildx command (#4)
 
 0.2.0 (2022-12-21)
 ------------------

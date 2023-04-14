@@ -1,3 +1,7 @@
+0.3.1 (2023-04-14)
+------------------
+Remove openssl and libssl packages from distroless base image (#7)
+
 0.3.0 (2023-03-21)
 ------------------
 Plugin to add Iglu schemas to managed resources (#6)

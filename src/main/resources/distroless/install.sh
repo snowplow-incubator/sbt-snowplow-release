@@ -24,6 +24,8 @@ esac
 
 # Remove libs and executables from the base image we don't want
 rm /usr/lib/${ARCH}-linux-gnu/libssl.so*
+rm /var/lib/dpkg/status.d/openssl*
+rm /var/lib/dpkg/status.d/libssl*
 rm -rf /usr/bin
 
 # Install system libraries required for java

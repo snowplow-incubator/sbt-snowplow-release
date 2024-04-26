@@ -1,3 +1,7 @@
+0.3.2 (2024-04-26)
+------------------
+Explicitly pin base image to Debian 11
+
 0.3.1 (2023-04-14)
 ------------------
 Remove openssl and libssl packages from distroless base image (#7)

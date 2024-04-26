@@ -35,7 +35,7 @@ object SnowplowDistrolessDockerPlugin extends AutoPlugin {
 
   override def projectSettings: Seq[Setting[_]] = Seq(
     dockerPermissionStrategy := DockerPermissionStrategy.CopyChown,
-    dockerBaseImage := "gcr.io/distroless/base:nonroot",
+    dockerBaseImage := "gcr.io/distroless/base-debian11:nonroot",
     dockerRepository := Some("snowplow"),
     dockerEntrypoint := Seq(
       "/usr/lib/jvm/java-11-openjdk/bin/java",

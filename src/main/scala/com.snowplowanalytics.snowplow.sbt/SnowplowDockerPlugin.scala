@@ -13,6 +13,7 @@
 package com.snowplowanalytics.snowplow.sbt
 
 import sbt._
+import com.typesafe.sbt.packager.docker.Cmd
 import com.typesafe.sbt.packager.docker.DockerPlugin
 import com.typesafe.sbt.packager.linux.LinuxPlugin.autoImport._
 import com.typesafe.sbt.packager.Keys.maintainer
@@ -20,7 +21,13 @@ import DockerPlugin.autoImport._
 
 object SnowplowDockerPlugin extends AutoPlugin {
 
+  object autoImport {
+    val dockerStopSignal = settingKey[String]("Sets the system call signal that will be sent to the container to exit, e.g. SIGTERM")
+  }
+
   override def requires: Plugins = DockerPlugin
+
+  import autoImport._
 
   override def projectSettings: Seq[Setting[_]] = Seq(
     Docker / maintainer := "Snowplow Analytics Ltd. <support@snowplow.io>",
@@ -28,6 +35,11 @@ object SnowplowDockerPlugin extends AutoPlugin {
     Docker / daemonUser := "snowplow",
     dockerRepository := Some("snowplow"),
     Docker / defaultLinuxInstallLocation := "/home/snowplow",
-    dockerUpdateLatest := true
+    dockerUpdateLatest := true,
+    dockerCommands += Cmd("STOPSIGNAL", dockerStopSignal.value)
+  )
+
+  override lazy val globalSettings: Seq[Setting[_]] = Seq(
+    dockerStopSignal := "SIGTERM"
   )
 }

@@ -30,6 +30,7 @@ object SnowplowDistrolessDockerPlugin extends AutoPlugin {
   }
 
   import autoImport._
+  import SnowplowDockerPlugin.autoImport._
 
   override def requires: Plugins = DockerPlugin && LauncherJarPlugin
 
@@ -60,7 +61,8 @@ object SnowplowDistrolessDockerPlugin extends AutoPlugin {
           "/bullseye/bin/sh",
           "/bullseye/usr/bin/install.sh"
         ),
-        Cmd("ENV", "LANG=C.UTF-8")
+        Cmd("ENV", "LANG=C.UTF-8"),
+        Cmd("STOPSIGNAL", dockerStopSignal.value)
       ) ++ dockerCommands.value.tail.map {
         case Cmd("USER", _*) => Cmd("USER", "nobody")
         case Cmd("WORKDIR", _*) => Cmd("WORKDIR", "/tmp")

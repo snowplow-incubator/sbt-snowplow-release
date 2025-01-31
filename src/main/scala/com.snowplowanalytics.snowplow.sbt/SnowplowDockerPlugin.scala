@@ -24,7 +24,7 @@ object SnowplowDockerPlugin extends AutoPlugin {
 
   override def projectSettings: Seq[Setting[_]] = Seq(
     Docker / maintainer := "Snowplow Analytics Ltd. <support@snowplow.io>",
-    dockerBaseImage := "eclipse-temurin:11-jre-focal",
+    dockerBaseImage := "eclipse-temurin:21-jre-noble",
     Docker / daemonUser := "snowplow",
     dockerRepository := Some("snowplow"),
     Docker / defaultLinuxInstallLocation := "/home/snowplow",

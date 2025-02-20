@@ -14,7 +14,7 @@ addSbtPlugin("com.snowplowanalytics" % "sbt-snowplow-release" % "x.y.z")
 
 ### Snowplow Docker Plugin
 
-Configure a sbt project to publish a docker image, using Snowplow's standard settings, and using `elipse-temurin:11-jre-focal` as the base image.
+Configure a sbt project to publish a docker image, using Snowplow's standard settings, and using `eclipse-temurin:21-jre-noble` as the base image.
 
 ```scala
 lazy val subproject = project
@@ -23,7 +23,7 @@ lazy val subproject = project
 
 ### Snowplow Distroless Docker Plugin
 
-Configure a sbt project to publish the "distroless" flavour of a Snowplow docker image. It uses Snowplow's standard settings, and using `gcr.io/distroless/base:nonroot` as the base image.
+Configure a sbt project to publish the "distroless" flavour of a Snowplow docker image. It uses Snowplow's standard settings, and using `gcr.io/distroless/java21-debian12` as the base image.
 
 ```scala
 lazy val subproject = project

@@ -1,3 +1,7 @@
+0.4.0 (2025-02-20)
+------------------
+Java 21 for snowplow docker images (#10)
+
 0.3.2 (2024-04-26)
 ------------------
 Explicitly pin base image to Debian 11

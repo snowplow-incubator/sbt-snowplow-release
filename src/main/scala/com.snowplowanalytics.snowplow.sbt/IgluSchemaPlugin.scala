@@ -17,6 +17,7 @@ import sbt.Keys._
 import sbt.io.IO
 import scala.sys.process._
 import scala.util.matching.Regex
+import scala.language.postfixOps
 
 object IgluSchemaPlugin extends AutoPlugin {
 

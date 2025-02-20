@@ -16,10 +16,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: coursier/cache-action@v6
-    - name: Set up JDK 11
+    - name: Set up JDK 21
       uses: actions/setup-java@v1
       with:
-        java-version: 11
+        java-version: 21
+    - name: Install sbt
+      uses: sbt/setup-sbt@v1
     - name: Check Scala formatting
       run: sbt scalafmtCheckAll
     - name: Deploy sbt-snowplow-release to Maven Central

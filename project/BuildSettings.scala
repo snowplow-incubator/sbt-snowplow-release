@@ -26,7 +26,6 @@ object BuildSettings {
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.html")),
   )
 
-  // Bintray publishing settings
   lazy val publishSettings = Seq[Setting[_]](
     publishArtifact := true,
     Test / publishArtifact := false,

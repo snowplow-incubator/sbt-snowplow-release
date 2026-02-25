@@ -15,5 +15,5 @@ lazy val root = (project in file("."))
   .enablePlugins(SbtPlugin)
   .settings(BuildSettings.rootSettings)
   .settings(
-    addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.9.9"),
+    addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.7"),
   )

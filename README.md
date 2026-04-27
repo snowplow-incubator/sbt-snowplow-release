@@ -23,7 +23,7 @@ lazy val subproject = project
 
 ### Snowplow Distroless Docker Plugin
 
-Configure a sbt project to publish the "distroless" flavour of a Snowplow docker image. It uses Snowplow's standard settings, and using `gcr.io/distroless/java21-debian12` as the base image.
+Configure a sbt project to publish the "distroless" flavour of a Snowplow docker image. It uses Snowplow's standard settings, and using `gcr.io/distroless/java21-debian13` as the base image.
 
 ```scala
 lazy val subproject = project

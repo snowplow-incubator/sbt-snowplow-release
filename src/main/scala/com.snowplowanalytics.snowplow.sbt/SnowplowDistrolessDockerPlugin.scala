@@ -31,7 +31,7 @@ object SnowplowDistrolessDockerPlugin extends AutoPlugin {
 
   override def projectSettings: Seq[Setting[_]] = Seq(
     Docker / maintainer := "Snowplow Analytics Ltd. <support@snowplow.io>",
-    dockerBaseImage := "gcr.io/distroless/java21-debian12:nonroot",
+    dockerBaseImage := "gcr.io/distroless/java21-debian13:nonroot",
     Docker / daemonUser := "nonroot",
     Docker / daemonGroup := "nonroot",
     Docker / daemonUserUid := None,

@@ -1,3 +1,7 @@
+0.6.0 (2026-04-27)
+------------------
+Debian 13 for base distroless image
+
 0.5.0 (2026-02-25)
 ------------------
 Upgrade sbt-native-packager to 1.11.7 (#12)

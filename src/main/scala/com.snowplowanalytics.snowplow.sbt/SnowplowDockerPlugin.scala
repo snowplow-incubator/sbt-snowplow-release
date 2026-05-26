@@ -13,7 +13,7 @@
 package com.snowplowanalytics.snowplow.sbt
 
 import sbt._
-import com.typesafe.sbt.packager.docker.DockerPlugin
+import com.typesafe.sbt.packager.docker.{DockerPermissionStrategy, DockerPlugin}
 import com.typesafe.sbt.packager.linux.LinuxPlugin.autoImport._
 import com.typesafe.sbt.packager.Keys.maintainer
 import DockerPlugin.autoImport._
@@ -25,9 +25,12 @@ object SnowplowDockerPlugin extends AutoPlugin {
   override def projectSettings: Seq[Setting[_]] = Seq(
     Docker / maintainer := "Snowplow Analytics Ltd. <support@snowplow.io>",
     dockerBaseImage := "eclipse-temurin:21-jre-noble",
-    Docker / daemonUser := "snowplow",
+    Docker / daemonUser := "nobody",
+    Docker / daemonGroup := "nogroup",
+    Docker / daemonUserUid := None,
     dockerRepository := Some("snowplow"),
     Docker / defaultLinuxInstallLocation := "/home/snowplow",
-    dockerUpdateLatest := true
+    dockerUpdateLatest := true,
+    dockerPermissionStrategy := DockerPermissionStrategy.CopyChown
   )
 }

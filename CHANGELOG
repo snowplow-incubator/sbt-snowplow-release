@@ -1,3 +1,7 @@
+0.7.0 (2026-05-27)
+------------------
+Use nobody daemon user for base docker image (#16)
+
 0.6.0 (2026-04-27)
 ------------------
 Debian 13 for base distroless image

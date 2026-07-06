@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+case "$1" in
+  executor | history-server)
+    exec /opt/spark/entrypoint.sh "$@"
+    ;;
+  *)
+    spark_args=()
+    app_args=()
+    past_separator=false
+    for arg in "$@"; do
+      if [ "${arg}" = "--" ]; then
+        past_separator=true
+        continue
+      fi
+      if "${past_separator}"; then
+        app_args+=("${arg}")
+      else
+        spark_args+=("${arg}")
+      fi
+    done
+    exec /opt/spark/entrypoint.sh driver \
+      "${spark_args[@]}" \
+      --class "@MAIN_CLASS@" \
+      "local:///opt/snowplow/@JAR_NAME@" \
+      "${app_args[@]}"
+    ;;
+esac

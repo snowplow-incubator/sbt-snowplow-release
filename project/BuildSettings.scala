@@ -18,6 +18,9 @@ import Keys._
 // dynver plugin
 import sbtdynver.DynVerPlugin.autoImport._
 
+// scripted plugin (bundled with sbt via SbtPlugin)
+import sbt.ScriptedPlugin.autoImport._
+
 object BuildSettings {
 
   lazy val buildSettings = Seq[Setting[_]](
@@ -42,6 +45,12 @@ object BuildSettings {
     )
   )
 
-  lazy val rootSettings = buildSettings ++ publishSettings
+  lazy val scriptedSettings = Seq[Setting[_]](
+    scriptedLaunchOpts := scriptedLaunchOpts.value ++
+      Seq("-Xmx1024M", s"-Dplugin.version=${version.value}"),
+    scriptedBufferLog := false
+  )
+
+  lazy val rootSettings = buildSettings ++ publishSettings ++ scriptedSettings
 
 }

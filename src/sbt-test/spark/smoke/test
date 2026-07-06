@@ -1,0 +1,4 @@
+> checkLayout
+> Docker/publishLocal
+> smokeRun
+> readOnlyRun

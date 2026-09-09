@@ -1,0 +1,10 @@
+# The launcher script must be executable inside the image even when the build
+# context reaching `docker build` has lost its file modes. Our apps stage the
+# docker context in one CI job and build it in another, shipping it through a
+# GitHub Actions artifact, and artifact upload/download does not preserve
+# permissions. A strategy that inherits the host file mode (e.g. CopyChown)
+# therefore produces an image whose entrypoint fails with exit 126.
+> Docker/stage
+> stripFileModes
+> buildStagedContext
+> runStagedImage

@@ -7,7 +7,7 @@ they are not published to Maven.
 Provenance differs by file, and it matters:
 
 - **`bin/` scripts** (`spark-submit`, `spark-class`, `load-spark-env.sh`):
-  copied verbatim from the official Spark tarball `spark-4.1.2-bin-hadoop3.tgz`
+  copied verbatim from the official Spark tarball `spark-4.2.0-bin-hadoop3.tgz`
   (`bin/`). These are generic launchers, identical across the tarball and the
   published image. This is the minimal driver-launch closure: the entrypoint's
   driver branch execs `spark-submit` → `spark-class` → sources
@@ -17,8 +17,8 @@ Provenance differs by file, and it matters:
   the `bin/` scripts at all; they exec `java` directly.)
 
 - **`entrypoint.sh`**: copied verbatim from the **`apache/spark-docker`** repo
-  (`4.1.2/scala2.13-java17-ubuntu/entrypoint.sh`) — i.e. the entrypoint the
-  *published* `apache/spark:4.1.2` image ships, **not** the tarball's
+  (`4.2.0/scala2.13-java17-ubuntu/entrypoint.sh`) — i.e. the entrypoint the
+  *published* `apache/spark:4.2.0` image ships, **not** the tarball's
   `kubernetes/dockerfiles/spark/entrypoint.sh`. This is deliberate: the tarball /
   Spark-source entrypoint writes a `java_opts.txt` file into the current working
   directory, which fails under `readOnlyRootFilesystem: true` (the CWD is a

@@ -47,7 +47,7 @@ lazy val sparkApp = project
 
 | Setting        | Default | Description |
 |----------------|---------|-------------|
-| `sparkVersion` | `4.1.2` | The Apache Spark version to bundle |
+| `sparkVersion` | `4.2.0` | The Apache Spark version to bundle |
 | `sparkConfig`  | `Map.empty` | Intrinsic Spark conf baked into the image's `spark-defaults.conf` (see below) |
 | `sparkLog4jConfigFile` | `None` | A log4j2 properties file layered on top of Spark's default log4j2 config, in both driver and executors (see below) |
 
@@ -136,7 +136,7 @@ Everything the plugin pins is a *default* — you can override any of it from yo
 Change the Spark version (this drives the whole distribution; keep your `provided` Spark deps on `sparkVersion.value` so they stay in lockstep):
 
 ```scala
-sparkVersion := "4.1.3"
+sparkVersion := "4.2.1"
 ```
 
 Bump a library the distribution ships — e.g. to take a netty or jackson fix early — by adding it to the `SparkDistribution` configuration. This affects the shipped distribution *only* (not your app's compile classpath), and Coursier's "highest version wins" pulls the version up:

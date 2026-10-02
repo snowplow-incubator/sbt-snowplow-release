@@ -65,15 +65,16 @@ object SnowplowSparkPlugin extends AutoPlugin {
   // SparkDistribution config (Coursier highest-wins pulls it up) or a
   // dependencyOverrides force.
   private object V {
-    val spark = "4.1.2"
-    val netty = "4.2.15.Final"
-    val jackson = "2.21.4"
-    val log4j = "2.25.3"
-    val lz4Java = "1.8.1"
-    val zookeeper = "3.9.5"
-    val vertx = "4.5.27"
-    val parquetJackson = "1.17.1" // shades jackson 2.21.3
-    val hadoopClient = "3.4.3" // stays on Spark 4.1.2's Hadoop 3.4.x line
+    val spark = "4.2.0"
+    val netty = "4.2.18.Final"
+    val jackson = "2.21.7"
+    val log4j = "2.25.5"
+    val lz4Java = "1.11.4"
+    val zstdJni = "1.5.7-20"
+    val zookeeper = "3.9.6"
+    val vertx = "4.5.30"
+    val ivy = "2.6.0"
+    val parquetJackson = "1.18.1" // shades jackson 2.22.2
   }
 
   // Vendored resource path -> mapping path within the install location.
@@ -197,16 +198,16 @@ object SnowplowSparkPlugin extends AutoPlugin {
     // as a sparkVersion bump makes entries redundant. Versions live in `V` above.
     libraryDependencies ++= Seq(
       "io.netty" % "netty-buffer" % V.netty,
-      "io.netty" % "netty-codec" % V.netty,
+      // netty-codec is a 4.2 aggregator that also depends on marshalling and
+      // protobuf, which Spark excludes from its netty-all; mirror that here.
+      ("io.netty" % "netty-codec" % V.netty)
+        .exclude("io.netty", "netty-codec-marshalling")
+        .exclude("io.netty", "netty-codec-protobuf"),
       "io.netty" % "netty-codec-base" % V.netty,
-      "io.netty" % "netty-codec-classes-quic" % V.netty,
       "io.netty" % "netty-codec-compression" % V.netty,
       "io.netty" % "netty-codec-dns" % V.netty,
       "io.netty" % "netty-codec-http" % V.netty,
       "io.netty" % "netty-codec-http2" % V.netty,
-      "io.netty" % "netty-codec-http3" % V.netty,
-      "io.netty" % "netty-codec-marshalling" % V.netty,
-      "io.netty" % "netty-codec-protobuf" % V.netty,
       "io.netty" % "netty-codec-socks" % V.netty,
       "io.netty" % "netty-common" % V.netty,
       "io.netty" % "netty-handler" % V.netty,
@@ -215,12 +216,9 @@ object SnowplowSparkPlugin extends AutoPlugin {
       "io.netty" % "netty-resolver-dns" % V.netty,
       "io.netty" % "netty-transport" % V.netty,
       "io.netty" % "netty-transport-classes-epoll" % V.netty,
-      "io.netty" % "netty-transport-classes-io_uring" % V.netty,
       "io.netty" % "netty-transport-classes-kqueue" % V.netty,
       "io.netty" % "netty-transport-native-unix-common" % V.netty,
-      "io.netty" % "netty-codec-native-quic" % V.netty,
       "io.netty" % "netty-transport-native-epoll" % V.netty,
-      "io.netty" % "netty-transport-native-io_uring" % V.netty,
       "io.netty" % "netty-transport-native-kqueue" % V.netty,
       "com.fasterxml.jackson.core" % "jackson-databind" % V.jackson,
       "com.fasterxml.jackson.core" % "jackson-core" % V.jackson,
@@ -231,13 +229,18 @@ object SnowplowSparkPlugin extends AutoPlugin {
       "org.apache.logging.log4j" % "log4j-api" % V.log4j,
       "org.apache.logging.log4j" % "log4j-1.2-api" % V.log4j,
       "org.apache.logging.log4j" % "log4j-slf4j2-impl" % V.log4j,
-      "org.lz4" % "lz4-java" % V.lz4Java,
+      "org.apache.logging.log4j" % "log4j-layout-template-json" % V.log4j,
+      "at.yawk.lz4" % "lz4-java" % V.lz4Java,
+      "com.github.luben" % "zstd-jni" % V.zstdJni,
       "org.apache.zookeeper" % "zookeeper" % V.zookeeper,
       "org.apache.zookeeper" % "zookeeper-jute" % V.zookeeper,
       "io.vertx" % "vertx-core" % V.vertx,
-      "org.apache.parquet" % "parquet-jackson" % V.parquetJackson,
-      "org.apache.hadoop" % "hadoop-client-runtime" % V.hadoopClient,
-      "org.apache.hadoop" % "hadoop-client-api" % V.hadoopClient
+      "io.vertx" % "vertx-web-client" % V.vertx,
+      "io.vertx" % "vertx-web-common" % V.vertx,
+      "io.vertx" % "vertx-auth-common" % V.vertx,
+      "io.vertx" % "vertx-uri-template" % V.vertx,
+      "org.apache.ivy" % "ivy" % V.ivy,
+      "org.apache.parquet" % "parquet-jackson" % V.parquetJackson
     ).map(_ % SparkDistribution),
     // The distribution provides the Scala library itself, so it must not be
     // duplicated inside the app's fat jar.

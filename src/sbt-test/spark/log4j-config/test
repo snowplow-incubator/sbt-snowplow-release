@@ -1,0 +1,18 @@
+# Setting on (as in build.sbt): jar staged and mapped, exact contents.
+> checkLog4jJar
+
+# The app edits its file: the jar must carry the new bytes, not a stale copy.
+$ copy-file src/spark/log4j2-overrides-edited.properties src/spark/log4j2-overrides.properties
+> checkLog4jJar
+
+# A missing file fails the build.
+> set sparkLog4jConfigFile := Some(baseDirectory.value / "src" / "spark" / "missing.properties")
+> checkStageFails does not exist
+
+# A file that exists but isn't .properties fails the build.
+> set sparkLog4jConfigFile := Some(baseDirectory.value / "src" / "spark" / "log4j2-overrides.xml")
+> checkStageFails must be a .properties file
+
+# Setting off: nothing staged, nothing mapped, no stale jar from the runs above.
+> set sparkLog4jConfigFile := None
+> checkNoLog4jJar

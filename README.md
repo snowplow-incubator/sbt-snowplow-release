@@ -49,6 +49,7 @@ lazy val sparkApp = project
 |----------------|---------|-------------|
 | `sparkVersion` | `4.1.2` | The Apache Spark version to bundle |
 | `sparkConfig`  | `Map.empty` | Intrinsic Spark conf baked into the image's `spark-defaults.conf` (see below) |
+| `sparkLog4jConfigFile` | `None` | A log4j2 properties file layered on top of Spark's default log4j2 config, in both driver and executors (see below) |
 
 #### Running the image
 
@@ -76,6 +77,57 @@ conf source, so anything passed as `--conf` at deploy time overrides it.
     sparkConfig := Map(
       "spark.hadoop.fs.s3a.aws.credentials.provider" -> "com.example.MyCredentialsProvider"
     )
+
+#### Tuning log4j2 logging
+
+Spark, Hadoop and your app all log through log4j2 in the image. To change log
+levels or filter out noisy lines, commit a log4j2 **properties-format** file to
+your repo and point `sparkLog4jConfigFile` at it:
+
+```scala
+sparkLog4jConfigFile := Some(baseDirectory.value / "src" / "spark" / "log4j2-overrides.properties")
+```
+
+The file holds only what you change. It's layered on top of Spark's own
+default log4j2 config (root level, appender, pattern) using log4j2's composite
+configuration, and applies to the driver and to every executor. For example:
+
+```properties
+# Drop a chatty logger to WARN
+logger.codec.name = org.apache.hadoop.io.compress.CodecPool
+logger.codec.level = warn
+
+# Keep a logger at INFO but drop one kind of line
+logger.commitops.name = org.apache.hadoop.fs.s3a.commit.impl.CommitOperations
+logger.commitops.filter.starting.type = RegexFilter
+logger.commitops.filter.starting.regex = Starting: Committing file .*
+logger.commitops.filter.starting.onMatch = DENY
+logger.commitops.filter.starting.onMismatch = NEUTRAL
+```
+
+Things to know:
+
+- The file is copied into the image byte for byte and read with log4j2's
+  normal rules for the properties format. In particular `\` is an escape
+  character, so a regex `\d` is written `\\d`, and log4j2 performs `${…}`
+  lookups, so a literal `${` is written `$${`.
+- Only `.properties` files are accepted, and a missing file fails the build.
+- Logger names must match exactly. A wrong name fails silently: the rule just
+  doesn't apply.
+- **Don't** put the file under `src/main/resources`. Files there end up in
+  your app's fat jar, which isn't on the classpath when log4j2 initialises,
+  so it would have no effect.
+- When unset (the default), the plugin adds nothing and Spark uses its own
+  defaults, exactly as before.
+- With this set, `spark.log.structuredLogging.enabled=true` has no effect.
+  Spark only switches to its JSON log profile when log4j2 is otherwise
+  unconfigured.
+- At deploy time, `-Dlog4j2.configurationFile=…` in
+  `spark.driver.extraJavaOptions`/`spark.executor.extraJavaOptions` still
+  takes precedence over this, if you ever need to replace the config entirely.
+- With this set, log4j2 no longer auto-discovers a `log4j2.properties` (or
+  other log4j2 config file) on the classpath, so one placed in Spark's conf
+  dir at deploy time is ignored. Use `-Dlog4j2.configurationFile` instead.
 
 #### Overriding versions from your application
 

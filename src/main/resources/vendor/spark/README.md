@@ -26,8 +26,11 @@ Provenance differs by file, and it matters:
   assembles the executor Java opts in memory (`for v in "${!SPARK_JAVA_OPT_@}"`)
   and writes nothing to the CWD, so it runs under a read-only root filesystem —
   which is what our production Spark-on-k8s pods use, and what the current RDB
-  transformer image already relies on. The `spark/smoke` sbt-test's `readOnlyRun`
-  task guards against regressing to a CWD-writing entrypoint.
+  transformer image already relies on. The `spark/smoke` sbt-test's `executorProbe`
+  task guards against regressing to a CWD-writing entrypoint, and also drives
+  the entrypoint's executor branch end to end (it sets the `SPARK_EXECUTOR_*` /
+  `SPARK_DRIVER_URL` env vars this entrypoint reads, so a re-vendor that renames
+  any of them will fail it).
 
 `decom.sh` is intentionally **not** vendored: it is only used for executor
 decommissioning (disabled by default, and unused by our batch workloads), and
@@ -36,3 +39,8 @@ nothing in the entrypoint or the `bin/` scripts references it.
 Re-vendor when the plugin's `sparkVersion` changes: `bin/` from the matching
 tarball, and `entrypoint.sh` from `apache/spark-docker` at the matching tag
 (never from the tarball's `kubernetes/dockerfiles/`).
+
+When bumping `sparkVersion`, note that `sparkLog4jConfigFile` points log4j2 at
+Spark's `org/apache/spark/log4j2-defaults.properties` classpath resource. If a
+Spark release renames it, any build with `sparkLog4jConfigFile` set fails with
+a message saying so, and the pointer in `SnowplowSparkPlugin` must be updated.

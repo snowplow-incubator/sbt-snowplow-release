@@ -16,8 +16,42 @@ lazy val root = (project in file("."))
     // because Spark is a Java project and ships no cats-* jar in its distribution
     // closure, so if Main uses cats and the job runs, the only place cats could
     // have come from is the app fat jar.
-    libraryDependencies += "org.typelevel" %% "cats-core" % "2.13.0"
+    libraryDependencies += "org.typelevel" %% "cats-core" % "2.13.0",
+    // Opts the smoke image into the log4j2 config layering, so smokeRun and
+    // executorProbe can assert it end to end in both JVM kinds.
+    sparkLog4jConfigFile := Some(baseDirectory.value / "src" / "spark" / "log4j2-overrides.properties")
   )
+
+// Runs a docker command to completion under a hard deadline, echoing its
+// combined stdout/stderr to the sbt log and returning it alongside the exit
+// code. No reliance on a `timeout` binary (absent on macOS): past the deadline
+// the named container is killed and the task fails loudly.
+def runContainer(cmd: Seq[String], containerName: String, deadlineMs: Long, log: sbt.util.Logger): (Int, String) = {
+  import scala.sys.process._
+  // Clear any container left behind by an earlier run that was killed before
+  // `--rm` fired; otherwise `--name` clashes and the run fails for the wrong
+  // reason. Output and exit code ignored: usually there's nothing to remove.
+  Seq("docker", "rm", "-f", containerName).!(ProcessLogger(_ => ()))
+  log.info(cmd.mkString(" "))
+  // StringBuffer, not StringBuilder: stdout and stderr lines arrive on separate
+  // threads. Each line is appended in ONE call so the two streams can't
+  // interleave mid-line (which would break line-anchored assertions).
+  val out = new StringBuffer
+  val proc = cmd.run(ProcessLogger { line =>
+    log.info(line)
+    out.append(line + "\n")
+    ()
+  })
+  val started = System.currentTimeMillis()
+  while (proc.isAlive() && System.currentTimeMillis() - started < deadlineMs)
+    Thread.sleep(500L)
+  if (proc.isAlive()) {
+    Seq("docker", "kill", containerName).!
+    proc.destroy()
+    sys.error(s"container $containerName timed out after ${deadlineMs / 1000}s - killed it")
+  }
+  (proc.exitValue(), out.toString)
+}
 
 // Assert the staged docker mappings describe the expected distribution layout,
 // AND that the two halves (Spark distribution vs. app + its own deps) are
@@ -46,6 +80,8 @@ TaskKey[Unit]("checkLayout") := {
     .getOrElse(sys.error("spark/conf/spark-defaults.conf not mapped"))
   if (IO.read(defaultsFile).trim.nonEmpty)
     sys.error("default (empty) sparkConfig should render an empty spark-defaults.conf")
+  if (!paths.contains("spark/jars/snowplow-log4j2-config.jar"))
+    sys.error("spark/jars/snowplow-log4j2-config.jar (log4j2 config layering) not mapped")
 }
 
 // Runs the built image as the non-root nobody user (UID 65534), driving a
@@ -102,47 +138,102 @@ TaskKey[Unit]("smokeRun") := {
     // job would either fail to submit or Main would abort.
     "--", "--smoke-marker"
   )
-  log.info(cmd.mkString(" "))
 
-  // Hard timeout in the task itself (no reliance on a `timeout` binary, which
-  // is not present on macOS). A correct run finishes in well under 2 minutes;
-  // if we blow past the deadline something is wrong (e.g. an executor relaunch
-  // loop), so force-kill the container and the process and fail loudly.
-  val deadlineMs = 300000L
-  val proc       = cmd.run(true)
-  val started    = System.currentTimeMillis()
-  while (proc.isAlive() && System.currentTimeMillis() - started < deadlineMs)
-    Thread.sleep(1000L)
-  if (proc.isAlive()) {
-    Seq("docker", "kill", containerName).!
-    proc.destroy()
-    sys.error(s"spark smoke job timed out after ${deadlineMs / 1000}s - killed container $containerName")
-  }
-  val code = proc.exitValue()
+  // Hard deadline via runContainer: a correct run finishes in well under 2
+  // minutes; past the deadline something is wrong (e.g. an executor relaunch
+  // loop), so the container is killed and the task fails.
+  val (code, output) = runContainer(cmd, containerName, 300000L, log)
   if (code != 0) sys.error(s"spark smoke job failed with exit code $code")
+
+  // log4j2 layering, driver JVM. (local-cluster executors write to files under
+  // the worker dir, not to this output; executorProbe covers executors.)
+  def check(cond: Boolean, msg: String): Unit =
+    if (!cond) sys.error(s"smokeRun (driver): $msg\n--- driver output ---\n$output")
+  check(
+    !output.contains("Using Spark's default log4j profile"),
+    "Spark fell back to its default log4j profile - the log4j2 config jar was not picked up"
+  )
+  check(!output.contains("INFO SecurityManager:"), "SecurityManager INFO lines present - the level override did not apply")
+  // Scoped to SparkContext: local-cluster's in-process Master and Worker log
+  // the same message under their own loggers, and must keep it.
+  check(
+    !output.contains("SparkContext: Running Spark version"),
+    "SparkContext 'Running Spark version' present - the SparkContext RegexFilter did not apply"
+  )
+  // Spark's own pattern (%d{yy/MM/dd HH:mm:ss} %p %c{1}: %m) on a surviving
+  // SparkContext INFO line proves the defaults were layered underneath, not lost.
+  val sparkPatternInfo = """(?m)^\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} INFO SparkContext: """.r
+  check(
+    sparkPatternInfo.findFirstIn(output).isDefined,
+    "no SparkContext INFO line in Spark's pattern - Spark's default config was lost, not layered"
+  )
 }
 
-// Read-only-root-filesystem regression guard. The production k8s driver pod
-// runs with `readOnlyRootFilesystem: true` and only /tmp mounted writable, so
-// the vendored entrypoint must NOT write anything into its CWD (a read-only
-// image layer). We vendor Apache Spark's *published-image* entrypoint (in-memory
-// SPARK_JAVA_OPT_ expansion) precisely because the source-tree/tarball variant
-// wrote `java_opts.txt` into the CWD and crash-failed under this posture.
+// Executor-path probe. Production k8s executor pods run this same image with
+// args `executor` (the executor pod template sets no command/args), under
+// readOnlyRootFilesystem as UID 65534. That path is: our wrapper's executor
+// passthrough -> the vendored /opt/spark/entrypoint.sh executor branch -> tini
+// -> java -cp $SPARK_CLASSPATH ...KubernetesExecutorBackend. The smoke job's
+// local-cluster executors bypass all of that (they're forked by an in-process
+// standalone Worker), so this is the only check of it.
 //
-// This drives the `executor` branch under `docker run --read-only`, which hits
-// the same entrypoint preamble as the driver but fails fast (no driver URL) once
-// it reaches the JVM - all we assert is that the read-only CWD is never touched,
-// i.e. the output never contains "Read-only file system". A regression to the
-// CWD-writing entrypoint would reintroduce that error and fail this guard.
-TaskKey[Unit]("readOnlyRun") := {
-  import scala.sys.process._
+// We set the env vars Spark's k8s backend would set on an executor pod and
+// point the executor at a dead driver URL. It then gets as far as starting the
+// backend, initialising logging, and attempting the driver RPC connection,
+// which fails with "Connection refused" in ~2s. Exit code is non-zero by
+// design; we assert on the output instead.
+//
+// Also the read-only-root-filesystem regression guard: we vendor Apache
+// Spark's *published-image* entrypoint (in-memory SPARK_JAVA_OPT_ expansion)
+// because the tarball variant wrote `java_opts.txt` into the CWD and
+// crash-failed under that posture.
+//
+// The env var names are the ones the vendored entrypoint.sh reads; if a Spark
+// re-vendor renames one, this probe fails loudly, which is what we want.
+TaskKey[Unit]("executorProbe") := {
   val log = streams.value.log
   val image = s"snowplow/${(Docker / packageName).value}:${version.value}"
-  val cmd = Seq("docker", "run", "--rm", "--read-only", "--user", "65534", image, "executor")
-  log.info(cmd.mkString(" "))
-  val out = new StringBuilder
-  val logger = ProcessLogger(line => out.append(line).append('\n'))
-  cmd.run(logger).exitValue() // expected non-zero: executor bails without a driver, that's fine
-  if (out.toString.toLowerCase.contains("read-only file system"))
-    sys.error(s"entrypoint wrote to its read-only CWD - the CWD-writing entrypoint has regressed:\n$out")
+  val containerName = "snowplow-spark-executor-probe"
+  val env = Seq(
+    "SPARK_EXECUTOR_MEMORY" -> "512m",
+    "SPARK_EXECUTOR_CORES" -> "1",
+    "SPARK_EXECUTOR_ID" -> "1",
+    "SPARK_APPLICATION_ID" -> "spark-probe",
+    "SPARK_EXECUTOR_POD_IP" -> "127.0.0.1",
+    "SPARK_RESOURCE_PROFILE_ID" -> "0",
+    "SPARK_EXECUTOR_POD_NAME" -> "probe-exec-1",
+    "SPARK_DRIVER_URL" -> "spark://CoarseGrainedScheduler@127.0.0.1:1"
+  ).flatMap { case (k, v) => Seq("-e", s"$k=$v") }
+  val cmd = Seq("docker", "run", "--rm", "--name", containerName, "--read-only", "--user", "65534") ++
+    env ++ Seq(image, "executor")
+  val (_, output) = runContainer(cmd, containerName, 120000L, log)
+  def check(cond: Boolean, msg: String): Unit =
+    if (!cond) sys.error(s"executorProbe: $msg\n--- executor output ---\n$output")
+
+  check(
+    !output.toLowerCase.contains("read-only file system"),
+    "entrypoint wrote to its read-only CWD - the CWD-writing entrypoint has regressed"
+  )
+  check(
+    output.contains("KubernetesExecutorBackend: Started daemon"),
+    "KubernetesExecutorBackend never started - the executor passthrough, entrypoint, tini, classpath or env var names have regressed"
+  )
+  check(
+    output.contains("Connection refused"),
+    "executor did not reach the driver-connection stage - it failed earlier than expected"
+  )
+
+  // log4j2 layering, on the real k8s executor path. "Started daemon" (checked
+  // above) also proves Spark's defaults survived: if the defaults resource were
+  // lost, log4j2 would drop every INFO line, that one included.
+  check(
+    !output.contains("Using Spark's default log4j profile"),
+    "Spark fell back to its default log4j profile - the log4j2 config jar was not picked up"
+  )
+  check(!output.contains("INFO SecurityManager:"), "SecurityManager INFO lines present - the level override did not apply")
+  check(!output.contains("for HUP"), "SignalUtils HUP line present - the RegexFilter did not apply")
+  check(
+    output.contains("Registering signal handler for TERM"),
+    "SignalUtils TERM line missing - the HUP RegexFilter is over-matching"
+  )
 }

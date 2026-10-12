@@ -1,0 +1,7 @@
+# Defaults resource excluded: staging must fail, naming the resource.
+> checkStageFails org/apache/spark/log4j2-defaults.properties
+
+# Control: with the exclusion removed, staging succeeds. This proves it was
+# the missing resource, not something else about this fixture, that failed.
+> set excludeDependencies -= ExclusionRule("org.apache.spark", "spark-common-utils-java_2.13")
+> stageSparkLog4jConfig
